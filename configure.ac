@@ -38,9 +38,9 @@ PKG_CHECK_MODULES(CURL, libcurl,
 AC_SUBST(CURL_CFLAGS)
 AC_SUBST(CURL_LIBS)
 
-PKG_CHECK_MODULES(JSON, json-c,
+PKG_CHECK_MODULES(JSON, [json-c >= 0.12.99],
   [AC_DEFINE([HAVE_JSON],[1],[Use JSON])],
-  [AC_MSG_ERROR("json-c missing")])
+  [AC_MSG_ERROR("json-c missing or version before 0.12.99")])
 AC_SUBST(JSON_CFLAGS)
 AC_SUBST(JSON_LIBS)
 
