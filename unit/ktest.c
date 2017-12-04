@@ -185,6 +185,7 @@ static void register_test_valid_devname(void)
 
 	/* Copying name to registration message */
 	kmsg.hdr.payload_len = strlen(KTEST_DEVICE_NAME);
+	kmsg.reg.id = 0x0123456789abcdef;
 	strcpy(kmsg.reg.devName, KTEST_DEVICE_NAME);
 
 	size = do_request(&kmsg, sizeof(kmsg.reg), &kresp);
