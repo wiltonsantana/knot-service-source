@@ -4,7 +4,7 @@ modules_sources =
 modules_ldadd =
 modules_cflags =
 
-AM_CFLAGS = $(WARNING_CFLAGS) $(BUILD_CFLAGS) @GLIB_CFLAGS@
+AM_CFLAGS = $(WARNING_CFLAGS) $(BUILD_CFLAGS) @GLIB_CFLAGS@ @KNOT_PROTOCOL_CFLAGS@
 AM_LDFLAGS = $(BUILD_LDFLAGS)
 
 bin_PROGRAMS = src/knotd inetbr/inetbrd
@@ -28,8 +28,10 @@ src_knotd_SOURCES = src/main.c \
 			$(modules_sources)
 
 src_knotd_LDADD = @GLIB_LIBS@ $(modules_ldadd) @ELL_LIBS@ @WEBSOCKETS_LIBS@ -lm
+src_knotd_la_LDADD = @KNOT_PROTOCOL_LIBS@
 src_knotd_LDFLAGS = $(AM_LDFLAGS)
 src_knotd_CFLAGS = $(AM_CFLAGS) $(modules_cflags) @ELL_CFLAGS@ @WEBSOCKETS_CFLAGS@
+src_knotd_la_CFLAGS = @KNOT_PROTOCOL_CFLAGS@
 
 inetbr_inetbrd_SOURCES = inetbr/main.c \
 			inetbr/manager.c inetbr/manager.h \
