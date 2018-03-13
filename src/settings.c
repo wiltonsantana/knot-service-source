@@ -31,8 +31,9 @@
 #include <json-c/json.h>
 
 #include "settings.h"
+#include "storage.h"
 
-static const char *config_path = "/etc/knot/gatewayConfig.json";
+static const char *config_path = "/etc/knot/knotd.conf";
 static char *host = NULL;
 static unsigned int port = 0;
 static const char *proto = "ws";
@@ -123,43 +124,10 @@ static bool is_valid_config_file(const char *config_path)
 	return config_path != NULL;
 }
 
-static bool get_as_string(json_object *root, char *name, const char **value)
-{
-	json_object *obj;
-
-	if (!json_object_object_get_ex(root, name, &obj))
-		return false;
-
-	*value = json_object_get_string(obj);
-
-	return true;
-}
-
-static bool get_as_int(json_object *root, char *name, int *value)
-{
-	json_object *obj;
-
-	if (!json_object_object_get_ex(root, name, &obj))
-		return false;
-
-	*value = json_object_get_int(obj);
-
-	return true;
-}
-
 static int parse_config_file(const char *config_path, struct settings *settings)
 {
 	int err = EXIT_FAILURE;
-	const char *obj_value;
-	json_object *root, *cloud;
-
-	/* Load data from config file */
-	root = json_object_from_file(config_path);
-	if (!root)
-		goto fail_get_root;
-
-	if (!json_object_object_get_ex(root, "cloud", &cloud))
-		goto fail_get_cloud;
+	char *value;
 
 	/*
 	 * Command line options (host and port) have higher priority
@@ -168,21 +136,26 @@ static int parse_config_file(const char *config_path, struct settings *settings)
 	 */
 
 	/* UUID is mandatory */
-	if (!get_as_string(cloud, "uuid", &obj_value) || obj_value == NULL)
+	value = storage_read_key_string(config_path, "Cloud","Uuid");
+
+	if (value == NULL)
 		goto fail_get_uuid;
-	settings->uuid = l_strdup(obj_value);
+	settings->uuid = l_strdup(value);
 
 	if (settings->host == NULL) {
-		if (!get_as_string(cloud, "serverName", &obj_value))
+		value = storage_read_key_string(config_path, "Cloud","ServerName");
+		if (value == NULL)
 			goto fail_get_host;
 	} else {
 		/* Allocate, so that we can free it later */
-		obj_value = settings->host;
+		value = settings->host;
 	}
-	settings->host = l_strdup(obj_value);
+	settings->host = l_strdup(value);
 
 	if (settings->port == 0) {
-		if (!get_as_int(cloud, "port", (int *)&settings->port))
+		err = storage_read_key_int(config_path, "Cloud", "Port",
+																		(int *)&settings->port);
+		if (err < 0)
 			goto fail_get_port;
 	}
 
@@ -194,11 +167,8 @@ fail_get_port:
 fail_get_host:
 	l_free(settings->uuid);
 fail_get_uuid:
-fail_get_cloud:
+
 done:
-	/* Free mem allocated for root object */
-	json_object_put(root);
-fail_get_root:
 	return err;
 }
 
