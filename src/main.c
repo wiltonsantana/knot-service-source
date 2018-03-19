@@ -36,8 +36,6 @@
 #include "settings.h"
 #include "manager.h"
 
-static struct settings *settings;
-
 static void main_loop_quit(struct l_timeout *timeout, void *user_data)
 {
 	l_main_quit();
@@ -104,10 +102,12 @@ static int detach()
 
 int main(int argc, char *argv[])
 {
+	struct settings *settings;
+
 	int err = EXIT_FAILURE;
 
-	err = settings_parse(argc, argv, &settings);
-	if (err)
+	settings = settings_load(argc, argv);
+	if (settings == NULL)
 		return err;
 
 	if (settings->help)
