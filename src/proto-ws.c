@@ -132,13 +132,15 @@ static int ws_mknode(int sock, const char *device_json, json_raw_t *json)
 				WS_RX_BUFFER_SIZE, "%s", jobjstring);
 
 	ret = wait_for_response(ws);
-
 	json_object_put(jarray);
+	if (ret != 0)
+		goto done;
 
 	/* TODO: Avoid another allocation */
 	json->data = l_strndup((const char *) session->data, session->size);
 	json->size = session->size;
 
+done:
 	return ret;
 }
 
