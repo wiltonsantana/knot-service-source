@@ -507,6 +507,66 @@ static json_object *data_create_object(uint8_t sensor_id,
 	return data;
 }
 
+void proto_pull_devices(void)
+{
+	json_object *jobj = NULL;
+	json_object *jobjentry = NULL, *jobjkey = NULL;
+	json_raw_t json;
+	int err;
+
+	memset(&json, 0, sizeof(json));
+	err = proto->pull_devices(proto_sock, &json);
+	if (err < 0) {
+		hal_log_error("pull_devices(): %s(%d)", strerror(-err), -err);
+		goto done;
+	}
+
+	jobj = json_tokener_parse(json.data);
+	if (!jobj)
+		goto done;
+
+	ajobj = json_object_new_array();
+	devicejobj = json_object_new_object()
+
+	/*
+	 * Getting 'id' from the device properties
+	 * {"devices":[{"uuid":
+	 *		"id" : [
+	 *		}]
+	 * }
+	 */
+
+	if (json_object_get_type(jobj) != json_type_array)
+		goto done;
+
+	for (i = 0; i < json_object_array_length(jobj); i++) {
+
+		jobjentry = json_object_array_get_idx(jobj, i);
+		if (!jobjentry)
+			break;
+
+		/* Getting 'id' */
+		if (!json_object_object_get_ex(jobjentry, "id", &jobjkey))
+			continue;
+
+		/*
+		 * Creates a list with all the id in the devices list
+		 */
+		if (json_object_get_int(jobjkey) != id) {
+			json_object_array_add(ajobj,
+					      json_object_get(jobjentry));
+			continue;
+		}
+	}
+
+	json_object_object_add(setdatajobj, "id", json_object_get(ajobj));
+
+done:
+	if (jobj)
+		json_object_put(jobj);
+	free(json.data);
+}
+
 /*
  * Updates the 'devices' db, removing the sensor_id that just sent the data
  */

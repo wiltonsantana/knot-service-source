@@ -190,6 +190,56 @@ done:
 	return ret;
 }
 
+static int ws_pull_devices(int sock, json_raw_t *json)
+{
+	json_object *jobj, *jarray;
+	const char *jobjstring;
+	struct ws_session *session;
+	struct lws *ws;
+	int ret;
+
+	ws = l_hashmap_lookup(lws_list, L_INT_TO_PTR(sock));
+	if (!ws)
+		return -EINVAL;
+
+	session = lws_wsi_user(ws);
+	if (!session)
+		return -EINVAL;
+
+	/* Retrieve online devices from the Meshblu*/
+	jobj = json_object_new_object();
+	jarray = json_object_new_array();
+	if (!jobj || !jarray) {
+		hal_log_error("JSON: no memory");
+		return -ENOMEM;
+	}
+
+	json_object_object_add(jobj, "online", json_object_new_string("true"));
+	json_object_array_add(jarray, json_object_new_string("devices"));
+	json_object_array_add(jarray, jobj);
+
+	jobjstring = json_object_to_json_string(jarray);
+	hal_log_info("WS TX JSON %s", jobjstring);
+
+	session->size = snprintf((char *) &(session->data[LWS_PRE]),
+				WS_RX_BUFFER_SIZE, "%s", jobjstring);
+
+	ret = wait_for_response(ws);
+	json_object_put(jarray);
+	if (ret != 0)
+		goto done;
+
+	if (strcmp("devices", (const char *) session->rsp) != 0)
+		return -EACCES;
+
+	/* TODO: Avoid another allocation */
+	json->data = l_strndup((const char *) session->data, session->size);
+	json->size = session->size;
+
+done:
+	return ret;
+}
+
 static int ws_signin(int sock, const char *uuid,
 		     const char *token, json_raw_t *json)
 {
@@ -661,6 +711,7 @@ struct proto_ops proto_ws = {
 	.schema = ws_update,
 	.data = ws_data,
 	.fetch = ws_device,
+	.poll = ws_poll_devices,
 	.async = NULL,
 	.async_stop = NULL,
 	.setdata = ws_update
