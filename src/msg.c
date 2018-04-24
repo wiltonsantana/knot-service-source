@@ -547,6 +547,10 @@ static int8_t msg_register(struct session *session,
 	session->token = l_strdup(token);
 	session->rollback = true;		/* Reset after sending SCHEMA */
 
+	result = proto_subscribe(proto_sock, uuid, token);
+	if (result != KNOT_SUCCESS)
+		return result;
+
 	return KNOT_SUCCESS;
 }
 

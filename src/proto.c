@@ -150,7 +150,6 @@ static void timeout_callback(struct l_timeout *timeout, void *user_data)
 	uint64_t *valx;
 	uint64_t *valy;
 	int err;
-	bool ret;
 
 	/* Fetch all devices from cloud */
 	memset(&json, 0, sizeof(json));
@@ -1029,6 +1028,27 @@ int proto_rmnode(int proto_socket, const char *uuid, const char *token)
 
 done:
 	if (response.data)
+		free(response.data);
+	return result;
+}
+
+int proto_subscribe(int proto_socket, const char *uuid, const char *token)
+{
+	json_raw_t response;
+	int err, result;
+
+	memset(&response, 0, sizeof(response));
+	err = proto->subscribe(proto_socket, uuid, token, &response);
+	if (err < 0) {
+		result = KNOT_CLOUD_FAILURE;
+		hal_log_error("rmnode() failed %s (%d)", strerror(-err), -err);
+		goto done;
+	}
+
+	result = KNOT_SUCCESS;
+
+done:
+	if(response.data)
 		free(response.data);
 	return result;
 }

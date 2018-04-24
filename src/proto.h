@@ -52,6 +52,8 @@ struct proto_ops {
 							json_raw_t *json);
 	int (*setdata) (int sock, const char *uuid, const char *token,
 					const char *jreq, json_raw_t *json);
+	int (*subscribe) (int sock, const char *uuid, const char *token,
+							json_raw_t *json);
 	/*
 	 * Watch that polls or monitors the cloud to check if "CONFIG" changed
 	 * or "SET DATA" or "GET DATA".
@@ -79,7 +81,7 @@ int proto_data(int proto_socket, const char *uuid,
 		      uint8_t value_type, const knot_data *value);
 void proto_getdata(int proto_sock, char *uuid, char *token, uint8_t sensor_id);
 void proto_setdata(int proto_sock, char *uuid, char *token, uint8_t sensor_id);
-
+int proto_subscribe(int proto_sock, const char *uuid, const char *token);
 int proto_set_proxy_handlers(const char *uuid, const char *token,
 			     proto_proxy_func_t added,
 			     proto_proxy_func_t removed,
