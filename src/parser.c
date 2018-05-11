@@ -372,3 +372,59 @@ struct l_queue *parser_mydevices_to_list(const char *json_str)
 	json_object_put(jobj);
 	return list;
 }
+
+
+struct l_queue *parser_setdata_to_list(const char *json_str)
+{
+	json_object *jobjarray, *jobjentry, *jobjkey;
+	struct l_queue *list;
+	knot_msg_data *entry;
+	knot_data data;
+	int sensor_id, i;
+	json_type jtype;
+
+	jobjarray = json_tokener_parse(json_str);
+	if (!jobjarray)
+		return NULL;
+
+	list = l_queue_new();
+	for (i = 0; i < json_object_array_length(jobjarray); i++) {
+
+		jobjentry = json_object_array_get_idx(jobjarray, i);
+
+		if(!json_object_object_get_ex(jobjentry, "sensor_id", &jobjkey))
+			goto done;
+
+		if (json_object_get_type(jobjkey) != json_type_int)
+			goto done;
+
+		sensor_id = json_object_get_int(jobjkey);
+
+		if(json_object_object_get_ex(jobjentry, "value", &jobjkey)){
+			jtype = json_object_get_type(jobjkey);
+			if (jtype != json_type_boolean &&
+			    jtype != json_type_int &&
+			    jtype != json_type_double)
+				goto done;
+
+			memset(&data, 0, sizeof(knot_data));
+			parse_json_value_types(jobjkey, &data.values);
+		} else
+			goto done;
+
+		entry = l_new(knot_msg_data, 1);
+		entry->sensor_id = (uint8_t) sensor_id;
+		memcpy(&(entry->payload), &data, sizeof(knot_data));
+		l_queue_push_tail(list, entry);
+	}
+
+	json_object_put(jobjarray);
+
+	return list;
+
+done:
+	l_queue_destroy(list, l_free);
+	json_object_put(jobjarray);
+
+	return NULL;
+}

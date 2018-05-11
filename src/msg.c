@@ -70,6 +70,8 @@ struct session {
 	char *schema;			/* Current schema */
 	struct l_queue *schema_list_tmp;/* Schema to be submitted to cloud */
 	struct l_queue *config_list;	/* knot_config accepted from cloud */
+	struct l_queue *setdata_list;	/* Set_data accepted from cloud */
+	char *setdata;			/* Current set_data */
 	char *config;			/* Current config */
 };
 
@@ -100,6 +102,7 @@ static struct session *session_new(struct node_ops *node_ops)
 	session->schema_list = NULL;
 	session->schema_list_tmp = NULL;
 	session->config_list = NULL;
+	session->setdata_list = NULL;
 
 	return session_ref(session);
 }
@@ -120,8 +123,10 @@ static void session_unref(struct session *session)
 	l_queue_destroy(session->schema_list, l_free);
 	l_queue_destroy(session->schema_list_tmp, l_free);
 	l_queue_destroy(session->config_list, l_free);
+	l_queue_destroy(session->setdata_list, l_free);
 	l_free(session->schema);
 	l_free(session->config);
+	l_free(session->setdata);
 
 	l_free(session);
 }
@@ -148,6 +153,14 @@ static bool config_sensor_id_cmp(const void *entry_data, const void *user_data)
 	unsigned int sensor_id = L_PTR_TO_UINT(user_data);
 
 	return config->sensor_id == sensor_id;
+}
+
+static bool setdata_sensor_id_cmp(const void *entry_data, const void *user_data)
+{
+	const knot_msg_data *setdata = entry_data;
+	unsigned int sensor_id = L_PTR_TO_UINT(user_data);
+
+	return setdata->sensor_id == sensor_id;
 }
 
 #if 0
@@ -390,6 +403,14 @@ static bool property_changed(const char *name,
 
 		session->config_list = parser_config_to_list(value);
 		session->config = l_strdup(value);
+
+	} else if (strcmp("set_data", name) == 0) {
+		if (session->setdata && strcmp(session->setdata, value) == 0)
+			goto done;
+
+		session->setdata_list = parser_setdata_to_list(value);
+		l_free(session->setdata);
+		session->setdata = l_strdup(value);
 	}
 
 done:
@@ -745,6 +766,10 @@ static int8_t msg_setdata_resp(struct session *session,
 
 	hal_log_info("THING %s updated data for sensor %d", session->uuid,
 								sensor_id);
+	l_queue_remove_if(session->setdata_list,
+			  setdata_sensor_id_cmp,
+			  L_UINT_TO_PTR(sensor_id));
+
 	result = KNOT_SUCCESS;
 
 done:
