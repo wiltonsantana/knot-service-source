@@ -759,10 +759,13 @@ static int8_t msg_setdata_resp(struct session *session,
 			       const knot_msg_data *kmdata)
 {
 	const knot_msg_schema *schema;
+	const char *json_str;
+	json_object *jobj;
 	int8_t result;
 	int proto_sock;
 	int err;
 	uint8_t sensor_id;
+	uint8_t *sensor_id_ptr;
 	/*
 	 * Pointer to KNOT data containing header, sensor id
 	 * and a primitive KNOT type
@@ -798,8 +801,6 @@ static int8_t msg_setdata_resp(struct session *session,
 
 	/* Fetches the 'devices' db */
 	proto_sock = l_io_get_fd(session->proto_channel);
-	proto_setdata(proto_sock, session->uuid, session->token, sensor_id);
-
 	result = proto_data(proto_sock, session->uuid, session->token,
 			    sensor_id, schema->values.value_type, kdata);
 	if (result != KNOT_SUCCESS)
@@ -808,7 +809,18 @@ static int8_t msg_setdata_resp(struct session *session,
 	hal_log_info("THING %s updated data for sensor %d", session->uuid,
 								sensor_id);
 
-	result = KNOT_SUCCESS;
+	sensor_id_ptr = l_queue_remove_if(session->setdata_list, sensor_id_cmp,
+					  L_UINT_TO_PTR(sensor_id));
+	if (sensor_id_ptr == NULL)
+		goto done;
+
+	l_free(sensor_id_ptr);
+	/* Updating 'set_data' array at Cloud */
+	jobj = parser_sensorid_to_json("set_data", session->setdata_list);
+	json_str = json_object_to_json_string(jobj);
+	proto_setdata(proto_sock, session->uuid, session->token, json_str);
+
+	json_object_put(jobj);
 
 done:
 	return result;
