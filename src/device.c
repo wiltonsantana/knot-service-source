@@ -268,6 +268,21 @@ static bool property_get_paired(struct l_dbus *dbus,
 	return true;
 }
 
+
+static bool property_get_connected(struct l_dbus *dbus,
+				   struct l_dbus_message *msg,
+				   struct l_dbus_message_builder *builder,
+				   void *user_data)
+{
+	struct knot_device *device = user_data;
+
+	l_dbus_message_builder_append_basic(builder, 'b', &device->connected);
+	hal_log_info("%s GetProperty(Connected = %d)",
+		     device->path, device->connected);
+
+	return true;
+}
+
 static void device_setup_interface(struct l_dbus_interface *interface)
 {
 	l_dbus_interface_method(interface, "Pair", 0,
@@ -297,6 +312,11 @@ static void device_setup_interface(struct l_dbus_interface *interface)
 
 	if (!l_dbus_interface_property(interface, "Paired", 0, "b",
 				       property_get_paired,
+				       NULL))
+		hal_log_error("Can't add 'Paired' property");
+
+	if (!l_dbus_interface_property(interface, "Connected", 0, "b",
+				       property_get_connected,
 				       NULL))
 		hal_log_error("Can't add 'Paired' property");
 
@@ -453,7 +473,7 @@ bool device_set_connected(struct knot_device *device, bool connected)
 	device->connected = connected;
 
 	l_dbus_property_changed(dbus_get_bus(), device->path,
-				DEVICE_INTERFACE, "Paired");
+				DEVICE_INTERFACE, "Connected");
 
 	return true;
 }
